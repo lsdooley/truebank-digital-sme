@@ -8,6 +8,12 @@ import { cicdChunks } from './cicd.js';
 import { awsCmdbChunks } from './aws_cmdb.js';
 import { architectureChunks } from './architecture.js';
 import { onboardingChunks } from './onboarding.js';
+import { servicenowExtra } from './servicenow_extra.js';
+import { confluenceExtra } from './confluence_extra.js';
+import { architectureExtra } from './architecture_extra.js';
+import { dynatraceExtra } from './dynatrace_extra.js';
+import { cicdExtra } from './cicd_extra.js';
+import { onboardingExtra } from './onboarding_extra.js';
 
 // Offset minutes per source system — how old the "ingest" should appear at startup
 // This ensures the freshness bar shows correct states regardless of when the app is run
@@ -44,12 +50,18 @@ function adjustTimestamps(chunks) {
 
 const allRaw = [
   ...servicenowChunks,
+  ...servicenowExtra,
   ...confluenceChunks,
+  ...confluenceExtra,
   ...dynatraceChunks,
+  ...dynatraceExtra,
   ...cicdChunks,
+  ...cicdExtra,
   ...awsCmdbChunks,
   ...architectureChunks,
+  ...architectureExtra,
   ...onboardingChunks,
+  ...onboardingExtra,
 ];
 
 export const knowledgeBase = adjustTimestamps(allRaw);
