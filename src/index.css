@@ -1,0 +1,242 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-primary:     #0A0F1E;
+  --bg-secondary:   #0F172A;
+  --bg-card:        #1E293B;
+  --bg-elevated:    #263248;
+  --border:         #2D3D5A;
+  --border-subtle:  #1E2D45;
+  --accent-blue:    #2563EB;
+  --accent-blue-lt: #3B82F6;
+  --accent-teal:    #0D9488;
+  --accent-amber:   #D97706;
+  --accent-green:   #16A34A;
+  --accent-red:     #DC2626;
+  --text-primary:   #E2E8F0;
+  --text-secondary: #94A3B8;
+  --text-muted:     #64748B;
+  --text-code:      #7DD3FC;
+
+  /* Source system colours */
+  --src-servicenow: #FF6B35;
+  --src-confluence: #0052CC;
+  --src-dynatrace:  #1496FF;
+  --src-cicd:       #6366F1;
+  --src-aws:        #FF9900;
+  --src-arch:       #0D9488;
+  --src-onboarding: #16A34A;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-secondary); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-subtle); }
+
+/* Code / mono text */
+code, .mono {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  color: var(--text-code);
+  font-size: 0.875em;
+}
+
+/* Robot eyes pulse animation */
+@keyframes eye-pulse {
+  0%, 100% { opacity: 1; filter: drop-shadow(0 0 4px #0D9488); }
+  50% { opacity: 0.3; filter: drop-shadow(0 0 1px #0D9488); }
+}
+
+.eye-pulse-active {
+  animation: eye-pulse 1.2s ease-in-out infinite;
+}
+
+/* Dot pulsing loader */
+@keyframes dot-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+  40% { transform: translateY(-6px); opacity: 1; }
+}
+
+.dot-loader span {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin: 0 2px;
+  border-radius: 50%;
+  background: var(--accent-teal);
+  animation: dot-bounce 1.4s ease-in-out infinite;
+}
+.dot-loader span:nth-child(2) { animation-delay: 0.2s; }
+.dot-loader span:nth-child(3) { animation-delay: 0.4s; }
+
+/* Timer pulse when running */
+@keyframes timer-pulse {
+  0%, 100% { color: var(--accent-red); }
+  50% { color: #ff6b6b; }
+}
+.timer-running { animation: timer-pulse 1s step-end infinite; }
+
+/* LIVE indicator pulse */
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.4); }
+  50% { opacity: 0.7; box-shadow: 0 0 0 4px rgba(22, 163, 74, 0); }
+}
+.live-dot { animation: live-pulse 2s ease-in-out infinite; }
+
+/* Spinning indicator */
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.spin { animation: spin 1s linear infinite; }
+
+/* Chat message left border */
+.msg-assistant {
+  border-left: 3px solid var(--accent-teal);
+  background: var(--bg-card);
+  border-radius: 0 8px 8px 0;
+}
+
+/* Citation chip */
+.citation-chip {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(13, 148, 136, 0.15);
+  border: 1px solid rgba(13, 148, 136, 0.4);
+  color: var(--accent-teal);
+  border-radius: 4px;
+  padding: 0 6px;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  cursor: pointer;
+  transition: background 0.15s;
+  vertical-align: baseline;
+  line-height: 1.6;
+}
+.citation-chip:hover { background: rgba(13, 148, 136, 0.3); }
+.citation-chip.active { background: rgba(13, 148, 136, 0.4); border-color: var(--accent-teal); }
+
+/* Source badge pill */
+.source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* Reasoning trace */
+.reasoning-panel {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 12px;
+  white-space: pre-wrap;
+}
+
+/* Prose formatting inside AI responses */
+.prose-response strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.prose-response ul, .prose-response ol {
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+.prose-response li { margin: 0.2em 0; }
+.prose-response p { margin: 0.5em 0; }
+.prose-response h2, .prose-response h3 {
+  color: var(--text-primary);
+  font-weight: 600;
+  margin: 1em 0 0.4em;
+}
+
+/* Panel borders */
+.panel-border { border: 1px solid var(--border); border-radius: 8px; }
+
+/* Button base */
+.btn-primary {
+  background: var(--accent-blue);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-primary:hover { background: var(--accent-blue-lt); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-ghost:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border-color: var(--accent-blue);
+}
+
+/* Quick query chip */
+.quick-chip {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+  width: 100%;
+}
+.quick-chip:hover {
+  background: var(--bg-elevated);
+  border-color: var(--accent-teal);
+  color: var(--text-primary);
+}
+
+/* Follow-up suggestion chips */
+.followup-chip {
+  background: rgba(37, 99, 235, 0.1);
+  border: 1px solid rgba(37, 99, 235, 0.3);
+  border-radius: 16px;
+  padding: 5px 12px;
+  font-size: 12px;
+  color: var(--accent-blue-lt);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.followup-chip:hover {
+  background: rgba(37, 99, 235, 0.2);
+  border-color: var(--accent-blue-lt);
+}
