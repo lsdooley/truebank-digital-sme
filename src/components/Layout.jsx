@@ -2,6 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { useAppScope } from '../hooks/useAppScope.js';
 import { useChat } from '../hooks/useChat.js';
+import { APP_SCOPES } from '../hooks/useAppScope.js';
 import Sidebar from './Sidebar.jsx';
 import FreshnessBar from './FreshnessBar.jsx';
 import MessageBubble from './MessageBubble.jsx';
@@ -103,24 +104,50 @@ export default function Layout() {
   };
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg-primary)' }}>
-      {/* Left sidebar */}
-      <Sidebar
-        activeAppid={activeAppid}
-        onAppChange={setActiveAppid}
-        onQuery={handleSubmit}
-        loading={loading}
-        freshnessSources={freshnessSources}
-        sessionStats={stats}
-      />
+    <div className="layout-root" style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg-primary)' }}>
+      {/* Left sidebar — hidden on mobile */}
+      <div className="layout-sidebar" style={{ display: 'flex', height: '100%' }}>
+        <Sidebar
+          activeAppid={activeAppid}
+          onAppChange={setActiveAppid}
+          onQuery={handleSubmit}
+          loading={loading}
+          freshnessSources={freshnessSources}
+          sessionStats={stats}
+        />
+      </div>
 
       {/* Centre: chat */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+      <div className="layout-main" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+        {/* Mobile-only header */}
+        <div className="mobile-header">
+          <div className="mobile-header-brand">
+            <span className="brand-name">TrueBank</span>
+            <span className="brand-sub">DIGITAL SME</span>
+          </div>
+          <div style={{ position: 'relative', flex: 1, maxWidth: 200 }}>
+            <select
+              className="mobile-scope-select"
+              value={activeAppid}
+              onChange={e => setActiveAppid(e.target.value)}
+              disabled={loading}
+            >
+              {APP_SCOPES.map(s => (
+                <option key={s.id} value={s.id}>{s.label}</option>
+              ))}
+            </select>
+            <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--text-muted)', fontSize: 10 }}>▾</span>
+          </div>
+          {loading && (
+            <span className="spin" style={{ width: 14, height: 14, border: '2px solid var(--border)', borderTopColor: 'var(--accent-teal)', borderRadius: '50%', display: 'inline-block', flexShrink: 0 }} />
+          )}
+        </div>
+
         {/* Freshness bar */}
         <FreshnessBar appid={activeAppid} />
 
         {/* Messages */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+        <div className="layout-messages" style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
           {messages.length === 0 && !loading ? (
             /* Empty / welcome state */
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
@@ -131,7 +158,7 @@ export default function Layout() {
               <p style={{ marginTop: 4, fontSize: 13, color: 'var(--text-secondary)' }}>
                 Scoped to: <span style={{ color: 'var(--accent-teal)' }}>{scopeLabel}</span>
               </p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 28, width: '100%', maxWidth: 500 }}>
+              <div className="welcome-cards" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 28, width: '100%', maxWidth: 500 }}>
                 {WELCOME_CARDS.map(card => (
                   <button
                     key={card.label}
@@ -177,7 +204,7 @@ export default function Layout() {
         </div>
 
         {/* Input */}
-        <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', background: 'var(--bg-secondary)', flexShrink: 0 }}>
+        <div className="layout-input-bar" style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', background: 'var(--bg-secondary)', flexShrink: 0 }}>
           {messages.length > 0 && (
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
               <button onClick={clearMessages} className="btn-ghost" style={{ fontSize: 11 }}>
@@ -225,8 +252,8 @@ export default function Layout() {
         </div>
       </div>
 
-      {/* Right: context panel */}
-      <div style={{
+      {/* Right: context panel — hidden on mobile */}
+      <div className="layout-citation-panel" style={{
         width: 260,
         minWidth: 260,
         background: 'var(--bg-secondary)',

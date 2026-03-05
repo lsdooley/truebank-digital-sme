@@ -240,3 +240,128 @@ code, .mono {
   background: rgba(37, 99, 235, 0.2);
   border-color: var(--accent-blue-lt);
 }
+
+/* ── Mobile layout ─────────────────────────────────────────────────────────── */
+
+/* Mobile header — hidden on desktop */
+.mobile-header { display: none; }
+
+@media (max-width: 768px) {
+  html, body, #root {
+    height: 100dvh; /* dynamic viewport height — accounts for browser chrome */
+    overflow: hidden;
+  }
+
+  /* Top-level flex container becomes a column */
+  .layout-root {
+    flex-direction: column !important;
+    height: 100dvh !important;
+  }
+
+  /* Hide sidebar and citation panel */
+  .layout-sidebar,
+  .layout-citation-panel { display: none !important; }
+
+  /* Centre column fills all space */
+  .layout-main {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Mobile header — teal top bar with branding + scope picker */
+  .mobile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 0 14px;
+    height: 48px;
+    min-height: 48px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .mobile-header-brand {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.1;
+    flex-shrink: 0;
+  }
+  .mobile-header-brand .brand-name {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+  }
+  .mobile-header-brand .brand-sub {
+    font-size: 9px;
+    color: var(--accent-teal);
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.06em;
+  }
+
+  .mobile-scope-select {
+    flex: 1;
+    min-width: 0;
+    max-width: 200px;
+    background: var(--bg-elevated) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 6px !important;
+    color: var(--text-primary) !important;
+    padding: 6px 28px 6px 10px !important;
+    font-size: 13px !important;
+    appearance: none;
+    -webkit-appearance: none;
+    outline: none;
+    cursor: pointer;
+  }
+
+  /* Freshness bar — scroll horizontally, no wrap */
+  .freshness-bar-inner {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Firefox */
+  }
+  .freshness-bar-inner::-webkit-scrollbar { display: none; }
+
+  /* Messages scroll area */
+  .layout-messages {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding: 14px 14px !important;
+  }
+
+  /* Input bar — safe area at bottom */
+  .layout-input-bar {
+    padding-bottom: calc(env(safe-area-inset-bottom, 8px) + 8px) !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  /* Prevent iOS font zoom on input focus — must be >= 16px */
+  .layout-input-bar input {
+    font-size: 16px !important;
+  }
+
+  /* Larger tap target for Ask button */
+  .layout-input-bar button.btn-primary {
+    min-height: 44px;
+    min-width: 60px;
+    padding: 0 16px !important;
+  }
+
+  /* Follow-up chips — wrap and larger touch area */
+  .followup-chip {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+
+  /* Message bubbles — tighter padding on small screens */
+  .msg-assistant { padding: 12px 12px !important; }
+
+  /* Welcome cards grid — single column on very small screens */
+  .welcome-cards { grid-template-columns: 1fr !important; }
+}

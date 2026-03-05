@@ -39,7 +39,7 @@ export default function FreshnessBar({ appid }) {
   });
 
   return (
-    <div style={{
+    <div className="freshness-bar-inner" style={{
       background: 'var(--bg-secondary)',
       borderBottom: '1px solid var(--border)',
       padding: '6px 16px',
