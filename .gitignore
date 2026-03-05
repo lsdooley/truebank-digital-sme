@@ -4,3 +4,6 @@ dist/
 *.pem
 .DS_Store
 .vite/
+.lambda-build/
+.aws-sam/
+samconfig.toml

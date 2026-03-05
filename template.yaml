@@ -1,0 +1,137 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: TrueBank Digital SME - Serverless backend + S3/CloudFront frontend
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+    Runtime: nodejs20.x
+    Architectures:
+      - x86_64
+
+Parameters:
+  AnthropicApiKey:
+    Type: String
+    NoEcho: true
+    Description: Anthropic API key for Claude Haiku
+
+Resources:
+
+  # ── Backend Lambda ─────────────────────────────────────────────────────────
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: truebank-sme-api
+      Handler: lambda.handler
+      CodeUri: .lambda-build/
+      Description: TrueBank Digital SME Express API
+      Environment:
+        Variables:
+          ANTHROPIC_API_KEY: !Ref AnthropicApiKey
+          NODE_ENV: production
+      Events:
+        ApiProxy:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /api/{proxy+}
+            Method: ANY
+
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins:
+          - '*'
+        AllowMethods:
+          - GET
+          - POST
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+
+  # ── Frontend S3 bucket ─────────────────────────────────────────────────────
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'truebank-sme-frontend-${AWS::AccountId}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub '${FrontendBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}'
+
+  # ── CloudFront OAC ─────────────────────────────────────────────────────────
+  CloudFrontOAC:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: truebank-sme-oac
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  # ── CloudFront distribution ────────────────────────────────────────────────
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        DefaultRootObject: index.html
+        HttpVersion: http2
+        Origins:
+          - Id: S3Frontend
+            DomainName: !GetAtt FrontendBucket.RegionalDomainName
+            S3OriginConfig: {}
+            OriginAccessControlId: !GetAtt CloudFrontOAC.Id
+          - Id: ApiGateway
+            DomainName: !Sub '${HttpApi}.execute-api.${AWS::Region}.amazonaws.com'
+            CustomOriginConfig:
+              HTTPSPort: 443
+              OriginProtocolPolicy: https-only
+        DefaultCacheBehavior:
+          TargetOriginId: S3Frontend
+          ViewerProtocolPolicy: redirect-to-https
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6  # CachingOptimized
+          AllowedMethods: [GET, HEAD]
+        CacheBehaviors:
+          - PathPattern: /api/*
+            TargetOriginId: ApiGateway
+            ViewerProtocolPolicy: https-only
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad  # CachingDisabled
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac  # AllViewerExceptHostHeader
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+
+Outputs:
+  CloudFrontUrl:
+    Description: App URL
+    Value: !Sub 'https://${CloudFrontDistribution.DomainName}'
+  ApiUrl:
+    Description: API Gateway URL (internal)
+    Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com'
+  FrontendBucket:
+    Description: S3 bucket name for frontend
+    Value: !Ref FrontendBucket
