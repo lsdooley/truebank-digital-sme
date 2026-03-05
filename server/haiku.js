@@ -19,10 +19,10 @@ export async function generateResponse(userQuery, retrievedChunks, sessionContex
 
 STRICT RULES:
 1. Answer only from the provided context records. Do not use general knowledge.
-2. Every factual claim must be attributed to a specific source record using [SOURCE: record_id] notation inline.
+2. Attribute facts by referencing record IDs inline using [SOURCE: record_id] notation — these are stripped from the visible response and used only to build the sources list shown to the user.
 3. If the context does not contain enough information to answer the question, say so explicitly — do not guess or extrapolate.
 4. Be direct and precise. The reader is an experienced SRE or platform engineer.
-5. When referencing incidents or changes, always include the record ID (INC, CHG, PRB format).
+5. When referencing incidents or changes, always include the record ID (INC, CHG, PRB format) in the text itself so it reads naturally.
 6. Flag any information that may be stale (marked STALE in the source metadata).
 7. Structure responses with clear sections when the answer covers multiple dimensions.
 8. Use markdown formatting: **bold** for record IDs and key terms, bullet lists for enumerated items.
@@ -41,7 +41,7 @@ ${contextBlock}
 
 QUESTION: ${userQuery}
 
-Provide a structured answer using only the context records above. Include [SOURCE: record_id] citations inline after each factual claim.`;
+Provide a structured answer using only the context records above. Include [SOURCE: record_id] markers after facts so the system can identify which records you used — these markers are hidden from the user and replaced by a sources panel.`;
 
   const response = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
@@ -50,12 +50,15 @@ Provide a structured answer using only the context records above. Include [SOURC
     messages: [{ role: 'user', content: userMessage }],
   });
 
-  const text = response.content[0].text;
+  const rawText = response.content[0].text;
 
-  // Extract cited record IDs from the response
-  const citationMatches = [...text.matchAll(/\[SOURCE:\s*([^\]]+)\]/gi)];
+  // Extract cited record IDs before stripping markers from the text
+  const citationMatches = [...rawText.matchAll(/\[SOURCE:\s*([^\]]+)\]/gi)];
   const citedIds = [...new Set(citationMatches.map(m => m[1].trim()))];
   const citedChunks = retrievedChunks.filter(c => citedIds.includes(c.record_id));
+
+  // Strip all [SOURCE: ...] markers from the text — sources are shown in the UI footer
+  const text = rawText.replace(/\s*\[SOURCE:\s*[^\]]+\]/gi, '').replace(/\n{3,}/g, '\n\n').trim();
 
   return {
     text,
