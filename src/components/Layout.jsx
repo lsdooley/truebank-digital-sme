@@ -89,6 +89,19 @@ export default function Layout() {
 
   const scopeLabel = SCOPE_LABELS[activeAppid] || activeAppid;
 
+  // Compute session stats from messages
+  const assistantMsgs = messages.filter(m => m.role === 'assistant');
+  const totalInput = assistantMsgs.reduce((s, m) => s + (m.inputTokens || 0), 0);
+  const totalOutput = assistantMsgs.reduce((s, m) => s + (m.outputTokens || 0), 0);
+  const totalChunks = assistantMsgs.reduce((s, m) => s + (m.chunksUsed || 0), 0);
+  const stats = {
+    exchanges: assistantMsgs.length,
+    inputTokens: totalInput,
+    outputTokens: totalOutput,
+    totalTokens: totalInput + totalOutput,
+    chunksRetrieved: totalChunks,
+  };
+
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg-primary)' }}>
       {/* Left sidebar */}
@@ -98,6 +111,7 @@ export default function Layout() {
         onQuery={handleSubmit}
         loading={loading}
         freshnessSources={freshnessSources}
+        sessionStats={stats}
       />
 
       {/* Centre: chat */}

@@ -106,7 +106,7 @@ function FreshnessPill({ freshness }) {
       padding: '1px 5px',
       borderRadius: 3,
     }}>
-      {freshness}
+      {freshness === 'LIVE' ? '' : freshness}
     </span>
   );
 }

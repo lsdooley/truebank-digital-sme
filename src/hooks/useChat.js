@@ -41,6 +41,9 @@ export function useChat() {
         error: data.error || null,
         errorDetail: data.errorDetail || null,
         followups: deriveFollowups(data.citations || []),
+        inputTokens: data.reasoning?.inputTokens || 0,
+        outputTokens: data.reasoning?.outputTokens || 0,
+        chunksUsed: data.reasoning?.chunksSelected || 0,
       };
 
       setMessages(prev => [...prev, assistantMsg]);

@@ -13,7 +13,7 @@ function relativeTime(isoString) {
 }
 
 const FRESHNESS_CONFIG = {
-  LIVE:   { color: 'var(--accent-green)',  label: 'LIVE',   pulse: true },
+  LIVE:   { color: 'var(--accent-green)',  label: '',       pulse: true },
   SYNCED: { color: 'var(--accent-teal)',   label: 'SYNCED', pulse: false },
   STALE:  { color: 'var(--accent-amber)',  label: 'STALE',  pulse: false },
 };

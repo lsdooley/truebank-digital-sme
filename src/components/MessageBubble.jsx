@@ -41,18 +41,46 @@ function parseContent(text, activeCitation, onCitationClick) {
         </span>
       );
     }
-    // Render text with basic markdown: **bold**
-    const segments = part.content.split(/(\*\*[^*]+\*\*)/g);
+    // Render text with markdown: **bold**, ## headers, ### headers
+    const lines = part.content.split('\n');
     return (
       <span key={i}>
-        {segments.map((seg, j) => {
-          if (seg.startsWith('**') && seg.endsWith('**')) {
-            return <strong key={j}>{seg.slice(2, -2)}</strong>;
+        {lines.map((line, k, arr) => {
+          // H2 header
+          if (line.startsWith('### ')) {
+            return (
+              <span key={k} style={{ display: 'block', marginTop: 12, marginBottom: 4 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-teal)', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  {line.slice(4)}
+                </span>
+                {k < arr.length - 1 && <br style={{ display: 'none' }} />}
+              </span>
+            );
           }
-          // Split on newlines
-          return seg.split('\n').map((line, k, arr) => (
-            <span key={k}>{line}{k < arr.length - 1 && <br />}</span>
-          ));
+          // H1 header
+          if (line.startsWith('## ')) {
+            return (
+              <span key={k} style={{ display: 'block', marginTop: 16, marginBottom: 5, paddingBottom: 5, borderBottom: '1px solid var(--border-subtle)' }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
+                  {line.slice(3)}
+                </span>
+                {k < arr.length - 1 && <br style={{ display: 'none' }} />}
+              </span>
+            );
+          }
+          // Normal line with **bold** support
+          const segments = line.split(/(\*\*[^*]+\*\*)/g);
+          return (
+            <span key={k}>
+              {segments.map((seg, j) => {
+                if (seg.startsWith('**') && seg.endsWith('**')) {
+                  return <strong key={j}>{seg.slice(2, -2)}</strong>;
+                }
+                return seg;
+              })}
+              {k < arr.length - 1 && <br />}
+            </span>
+          );
         })}
       </span>
     );

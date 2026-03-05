@@ -67,7 +67,33 @@ function SessionTimer() {
   );
 }
 
-export default function Sidebar({ activeAppid, onAppChange, onQuery, loading, freshnessSources }) {
+function SessionStats({ stats }) {
+  if (!stats || stats.exchanges === 0) return null;
+  const rows = [
+    { label: 'Exchanges',     value: stats.exchanges },
+    { label: 'Input tokens',  value: stats.inputTokens.toLocaleString() },
+    { label: 'Output tokens', value: stats.outputTokens.toLocaleString() },
+    { label: 'Total tokens',  value: stats.totalTokens.toLocaleString() },
+    { label: 'Chunks used',   value: stats.chunksRetrieved },
+  ];
+  return (
+    <div>
+      <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.08em', marginBottom: 6 }}>
+        SESSION CONTEXT
+      </div>
+      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 6, padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {rows.map(r => (
+          <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{r.label}</span>
+            <span style={{ fontSize: 11, fontFamily: 'JetBrains Mono, monospace', color: 'var(--text-code)' }}>{r.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function Sidebar({ activeAppid, onAppChange, onQuery, loading, freshnessSources, sessionStats }) {
   const navigate = useNavigate();
 
   return (
@@ -127,27 +153,9 @@ export default function Sidebar({ activeAppid, onAppChange, onQuery, loading, fr
         {/* Incident timer */}
         <IncidentTimer />
 
-        {/* Source freshness */}
-        <div>
-          <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.08em', marginBottom: 6 }}>
-            SOURCE STATUS
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {(freshnessSources || SOURCE_FRESHNESS_DEFAULTS.map(s => ({ source_label: s.label, freshness: 'LIVE' }))).map(s => (
-              <div key={s.source_label} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11.5 }}>
-                <FreshnessDot freshness={s.freshness} pulse />
-                <span style={{ color: 'var(--text-secondary)', flex: 1 }}>{s.source_label}</span>
-                <span style={{
-                  fontSize: 10,
-                  fontFamily: 'JetBrains Mono, monospace',
-                  color: s.freshness === 'LIVE' ? 'var(--accent-green)' : s.freshness === 'SYNCED' ? 'var(--accent-teal)' : 'var(--accent-amber)',
-                }}>
-                  {s.freshness}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* Session context stats */}
+        <SessionStats stats={sessionStats} />
+
       </div>
 
       {/* Footer */}
