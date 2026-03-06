@@ -8,20 +8,41 @@ import FreshnessBar from './FreshnessBar.jsx';
 import MessageBubble from './MessageBubble.jsx';
 import CitationPanel from './CitationPanel.jsx';
 import { RobotAvatar } from './Sidebar.jsx';
-
-const WELCOME_CARDS = [
-  { icon: '⚡', label: 'Recent Changes',   query: 'What changed in TruView Core in the last 72 hours?' },
-  { icon: '🔴', label: 'Active Incidents',  query: 'Is there an active incident on TruView Core?' },
-  { icon: '💥', label: 'Dependency Map',    query: 'What is the blast radius if account-service goes down?' },
-  { icon: '📞', label: 'Escalation Guide',  query: 'Who do I escalate TruView Core incidents to and who is on-call?' },
-];
+import DancingRobot from './DancingRobot.jsx';
 
 const SCOPE_LABELS = {
-  'APPID-973193': 'TruView Core',
-  'APPID-871198': 'TruView Web',
-  'APPID-871204': 'TruView Mobile',
-  'ALL': 'All TruView Applications',
+  'APPID-973193':  'TruView Core',
+  'APPID-871198':  'TruView Web',
+  'APPID-871204':  'TruView Mobile',
+  'APPID-7779311': 'TrueBank Digital SME',
+  'ALL':           'All TruView Applications',
 };
+
+function getWelcomeCards(appid) {
+  const label = SCOPE_LABELS[appid] || appid;
+  if (appid === 'APPID-7779311') {
+    return [
+      { icon: '🔴', label: 'Active Incidents', query: 'Are there any active incidents on the Digital SME platform?' },
+      { icon: '⚡', label: 'Recent Changes',   query: 'What changes have been deployed to the Digital SME recently?' },
+      { icon: '🏗',  label: 'Architecture',     query: 'Explain the Digital SME RAG architecture and how it works' },
+      { icon: '🔐', label: 'Vulnerabilities',  query: 'Are there any open security vulnerabilities affecting the Digital SME?' },
+    ];
+  }
+  if (appid === 'ALL') {
+    return [
+      { icon: '🔴', label: 'Active Incidents', query: 'What active incidents are there across all TruView applications?' },
+      { icon: '⚡', label: 'Recent Changes',   query: 'What changed across TruView applications in the last 72 hours?' },
+      { icon: '💥', label: 'Blast Radius',     query: 'What is the blast radius if TruView Core account-service goes down?' },
+      { icon: '📋', label: 'Escalation',       query: 'Who are the on-call contacts across TruView applications?' },
+    ];
+  }
+  return [
+    { icon: '🔴', label: 'Active Incidents', query: `Are there any active incidents on ${label}?` },
+    { icon: '⚡', label: 'Recent Changes',   query: `What changed in ${label} in the last 72 hours?` },
+    { icon: '💥', label: 'Blast Radius',     query: `What is the blast radius if ${label} goes down?` },
+    { icon: '📞', label: 'Escalation Guide', query: `Who do I escalate ${label} incidents to and who is on-call?` },
+  ];
+}
 
 function LoadingBubble({ stage }) {
   return (
@@ -46,10 +67,12 @@ export default function Layout() {
   const { appid: urlAppid } = useParams();
   const navigate = useNavigate();
   const { activeAppid, setActiveAppid, addRecentQuery } = useAppScope(urlAppid || 'ALL');
-  const { messages, loading, loadingStage, sendMessage, clearMessages } = useChat();
+  const { messages, loading, streaming, loadingStage, sendMessage, clearMessages } = useChat();
   const [inputValue, setInputValue] = useState('');
   const [activeCitation, setActiveCitation] = useState(null);
   const [freshnessSources, setFreshnessSources] = useState([]);
+  const [robotRunning, setRobotRunning] = useState(false);
+  const seenMilestones = useRef(new Set());
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -70,10 +93,18 @@ export default function Layout() {
     return () => { cancelled = true; clearInterval(iv); };
   }, [activeAppid]);
 
-  // Scroll to bottom on new messages
+  // Scroll to bottom on new messages; use instant scroll while streaming to avoid jank
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const lastMsg = messages[messages.length - 1];
+    messagesEndRef.current?.scrollIntoView({ behavior: lastMsg?.streaming ? 'auto' : 'smooth' });
   }, [messages, loading]);
+
+  // Refocus input when loading finishes
+  useEffect(() => {
+    if (!loading) {
+      setTimeout(() => inputRef.current?.focus(), 0);
+    }
+  }, [loading]);
 
   const handleSubmit = (query) => {
     const q = (query || inputValue).trim();
@@ -82,6 +113,7 @@ export default function Layout() {
     setActiveCitation(null);
     addRecentQuery(q);
     sendMessage(q, activeAppid);
+    setTimeout(() => inputRef.current?.focus(), 0);
   };
 
   const handleCitationClick = (recordId) => {
@@ -102,6 +134,17 @@ export default function Layout() {
     totalTokens: totalInput + totalOutput,
     chunksRetrieved: totalChunks,
   };
+  // Easter egg: robot dances across screen at output token milestones
+  useEffect(() => {
+    const MILESTONES = [5000, 10100, 31500];
+    for (const m of MILESTONES) {
+      if (stats.outputTokens >= m && !seenMilestones.current.has(m)) {
+        seenMilestones.current.add(m);
+        setRobotRunning(true);
+        break;
+      }
+    }
+  }, [stats.outputTokens]);
 
   return (
     <div className="layout-root" style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg-primary)' }}>
@@ -159,7 +202,7 @@ export default function Layout() {
                 Scoped to: <span style={{ color: 'var(--accent-teal)' }}>{scopeLabel}</span>
               </p>
               <div className="welcome-cards" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 28, width: '100%', maxWidth: 500 }}>
-                {WELCOME_CARDS.map(card => (
+                {getWelcomeCards(activeAppid).map(card => (
                   <button
                     key={card.label}
                     onClick={() => handleSubmit(card.query)}
@@ -197,7 +240,7 @@ export default function Layout() {
                   onFollowup={handleSubmit}
                 />
               ))}
-              {loading && <LoadingBubble stage={loadingStage} />}
+              {loading && !streaming && <LoadingBubble stage={loadingStage} />}
               <div ref={messagesEndRef} />
             </>
           )}
@@ -219,7 +262,6 @@ export default function Layout() {
               onChange={e => setInputValue(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSubmit()}
               placeholder={`Ask about ${scopeLabel}...`}
-              disabled={loading}
               style={{
                 flex: 1,
                 background: 'var(--bg-card)',
@@ -271,6 +313,7 @@ export default function Layout() {
           onCitationClick={handleCitationClick}
         />
       </div>
+      {robotRunning && <DancingRobot onDone={() => setRobotRunning(false)} />}
     </div>
   );
 }

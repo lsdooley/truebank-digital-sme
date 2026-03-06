@@ -4,6 +4,7 @@ const STATUS_MAP = {
   'APPID-973193': { status: 'DEGRADED',   color: 'var(--accent-amber)' },
   'APPID-871198': { status: 'MONITORING', color: '#EAB308' },
   'APPID-871204': { status: 'DEGRADED',   color: 'var(--accent-amber)' },
+  'APPID-7779311':{ status: 'HEALTHY',    color: 'var(--accent-green)' },
   'ALL':          { status: 'MIXED',      color: 'var(--accent-amber)' },
 };
 

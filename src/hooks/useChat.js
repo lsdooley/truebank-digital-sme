@@ -5,6 +5,7 @@ let sessionId = crypto.randomUUID();
 export function useChat() {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [streaming, setStreaming] = useState(false);
   const [loadingStage, setLoadingStage] = useState('');
   const [error, setError] = useState(null);
   const stageTimerRef = useRef(null);
@@ -13,8 +14,11 @@ export function useChat() {
     if (!query.trim() || loading) return;
 
     const userMsg = { role: 'user', content: query, id: crypto.randomUUID(), timestamp: new Date() };
+    const assistantId = crypto.randomUUID();
+
     setMessages(prev => [...prev, userMsg]);
     setLoading(true);
+    setStreaming(false);
     setError(null);
     setLoadingStage('Retrieving from knowledge base...');
 
@@ -23,47 +27,95 @@ export function useChat() {
     }, 500);
 
     try {
-      const res = await fetch('/api/chat', {
+      const res = await fetch('/api/chat/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query, appid, sessionId }),
       });
 
-      const data = await res.json();
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-      const assistantMsg = {
-        role: 'assistant',
-        id: crypto.randomUUID(),
-        timestamp: new Date(),
-        content: data.response,
-        citations: data.citations || [],
-        reasoning: data.reasoning || null,
-        error: data.error || null,
-        errorDetail: data.errorDetail || null,
-        followups: deriveFollowups(data.citations || []),
-        inputTokens: data.reasoning?.inputTokens || 0,
-        outputTokens: data.reasoning?.outputTokens || 0,
-        chunksUsed: data.reasoning?.chunksSelected || 0,
-      };
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let accumulatedRaw = '';
+      let streamingStarted = false;
 
-      setMessages(prev => [...prev, assistantMsg]);
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          let data;
+          try { data = JSON.parse(line.slice(6)); } catch { continue; }
+
+          if (data.delta !== undefined) {
+            accumulatedRaw += data.delta;
+            // Strip complete [SOURCE: ...] markers so they never flash in the UI
+            const displayText = accumulatedRaw.replace(/\[SOURCE:\s*[^\]]+\]/g, '');
+
+            if (!streamingStarted) {
+              streamingStarted = true;
+              clearTimeout(stageTimerRef.current);
+              setLoadingStage('');
+              setStreaming(true);
+              setMessages(prev => [...prev, {
+                role: 'assistant', id: assistantId, timestamp: new Date(),
+                content: displayText, citations: [], reasoning: null,
+                error: null, followups: [], inputTokens: 0, outputTokens: 0,
+                chunksUsed: 0, streaming: true,
+              }]);
+            } else {
+              setMessages(prev => prev.map(m =>
+                m.id === assistantId ? { ...m, content: displayText } : m
+              ));
+            }
+          }
+
+          if (data.done) {
+            const finalMsg = {
+              role: 'assistant', id: assistantId, timestamp: new Date(),
+              content: data.response,
+              citations: data.citations || [],
+              reasoning: data.reasoning || null,
+              error: data.error || null,
+              errorDetail: data.errorDetail || null,
+              followups: deriveFollowups(data.citations || []),
+              inputTokens: data.reasoning?.inputTokens || 0,
+              outputTokens: data.reasoning?.outputTokens || 0,
+              chunksUsed: data.reasoning?.chunksSelected || 0,
+              streaming: false,
+            };
+
+            if (streamingStarted) {
+              setMessages(prev => prev.map(m => m.id === assistantId ? finalMsg : m));
+            } else {
+              setMessages(prev => [...prev, finalMsg]);
+            }
+          }
+        }
+      }
     } catch (err) {
-      const assistantMsg = {
-        role: 'assistant',
-        id: crypto.randomUUID(),
-        timestamp: new Date(),
-        content: null,
-        citations: [],
-        reasoning: null,
+      const errMsg = {
+        role: 'assistant', id: assistantId, timestamp: new Date(),
+        content: null, citations: [], reasoning: null,
         error: 'Service temporarily unavailable. Please check server connection.',
-        errorDetail: err.message,
-        followups: [],
+        errorDetail: err.message, followups: [], streaming: false,
       };
-      setMessages(prev => [...prev, assistantMsg]);
+      setMessages(prev => {
+        const hasPartial = prev.some(m => m.id === assistantId);
+        return hasPartial ? prev.map(m => m.id === assistantId ? errMsg : m) : [...prev, errMsg];
+      });
       setError(err.message);
     } finally {
       clearTimeout(stageTimerRef.current);
       setLoading(false);
+      setStreaming(false);
       setLoadingStage('');
     }
   }, [loading]);
@@ -74,7 +126,7 @@ export function useChat() {
     sessionId = crypto.randomUUID();
   }, []);
 
-  return { messages, loading, loadingStage, error, sendMessage, clearMessages };
+  return { messages, loading, streaming, loadingStage, error, sendMessage, clearMessages };
 }
 
 // Derive follow-up suggestions based on which source systems were cited

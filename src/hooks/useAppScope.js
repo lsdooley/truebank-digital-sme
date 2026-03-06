@@ -4,6 +4,7 @@ export const APP_SCOPES = [
   { id: 'APPID-973193', label: 'TruView Core', short: 'Core' },
   { id: 'APPID-871198', label: 'TruView Web', short: 'Web' },
   { id: 'APPID-871204', label: 'TruView Mobile', short: 'Mobile' },
+  { id: 'APPID-7779311', label: 'TrueBank Digital SME', short: 'SME' },
   { id: 'ALL', label: 'All TruView', short: 'All' },
 ];
 

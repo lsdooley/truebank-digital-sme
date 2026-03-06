@@ -17,6 +17,7 @@ function EmptyState({ appid, onQuery }) {
     'APPID-973193': 'TruView Core',
     'APPID-871198': 'TruView Web',
     'APPID-871204': 'TruView Mobile',
+    'APPID-7779311': 'TrueBank Digital SME',
     'ALL': 'All TruView Applications',
   }[appid] || appid;
 
@@ -56,7 +57,7 @@ function EmptyState({ appid, onQuery }) {
 
       <p style={{ marginTop: 24, fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', maxWidth: 400 }}>
         Every answer is grounded in a source record.<br />
-        Scope: TruView Platform — TruView Core, Web, Mobile.
+        Scope: TruView Platform — TruView Core, Web, Mobile, Digital SME.
       </p>
     </div>
   );
@@ -92,6 +93,13 @@ export default function ChatInterface({ activeAppid, onQuerySubmit }) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
+  // Return focus to input whenever loading finishes
+  useEffect(() => {
+    if (!loading) {
+      setTimeout(() => inputRef.current?.focus(), 0);
+    }
+  }, [loading]);
+
   const handleSubmit = (query) => {
     const q = (query || inputValue).trim();
     if (!q || loading) return;
@@ -99,6 +107,8 @@ export default function ChatInterface({ activeAppid, onQuerySubmit }) {
     setActiveCitation(null);
     if (onQuerySubmit) onQuerySubmit(q);
     sendMessage(q, activeAppid);
+    // Maintain focus on the input field
+    inputRef.current?.focus();
   };
 
   const handleCitationClick = (recordId) => {
@@ -149,7 +159,6 @@ export default function ChatInterface({ activeAppid, onQuerySubmit }) {
               onChange={e => setInputValue(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSubmit()}
               placeholder={`Ask about ${activeAppid === 'ALL' ? 'TruView Platform' : activeAppid}...`}
-              disabled={loading}
               style={{
                 flex: 1,
                 background: 'var(--bg-card)',

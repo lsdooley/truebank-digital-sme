@@ -365,3 +365,28 @@ code, .mono {
   /* Welcome cards grid — single column on very small screens */
   .welcome-cards { grid-template-columns: 1fr !important; }
 }
+
+/* Streaming cursor */
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+.streaming-cursor {
+  display: inline-block;
+  width: 7px; height: 14px;
+  background: var(--accent-teal);
+  border-radius: 1px;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: blink 1s step-end infinite;
+}
+
+/* Dancing robot easter egg */
+@keyframes robot-run {
+  from { transform: translateX(-80px); }
+  to   { transform: translateX(calc(100vw + 80px)); }
+}
+@keyframes robot-dance {
+  0%   { transform: translateY(0)    rotate(-8deg) scaleX(1);    }
+  25%  { transform: translateY(-18px) rotate(8deg) scaleX(0.93); }
+  50%  { transform: translateY(0)    rotate(-8deg) scaleX(1);    }
+  75%  { transform: translateY(-18px) rotate(8deg) scaleX(0.93); }
+  100% { transform: translateY(0)    rotate(-8deg) scaleX(1);    }
+}

@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { RobotAvatar } from './Sidebar.jsx';
+import { useMemo, useState } from 'react';
 import ReasoningTrace from './ReasoningTrace.jsx';
 
 function relativeTime(date) {
@@ -12,12 +13,25 @@ function relativeTime(date) {
 // ─── Inline renderer ──────────────────────────────────────────────────────────
 
 function renderInline(text) {
-  const segments = text.split(/(\*\*[^*]+\*\*)/g);
-  return segments.map((seg, j) =>
-    seg.startsWith('**') && seg.endsWith('**')
-      ? <strong key={j} style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{seg.slice(2, -2)}</strong>
-      : seg
-  );
+  // Split on **bold** and `code` spans
+  const segments = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
+  return segments.map((seg, j) => {
+    if (seg.startsWith('**') && seg.endsWith('**')) {
+      return <strong key={j} style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{seg.slice(2, -2)}</strong>;
+    }
+    if (seg.startsWith('`') && seg.endsWith('`')) {
+      return (
+        <code key={j} style={{
+          fontFamily: 'JetBrains Mono, monospace', fontSize: 12,
+          background: 'var(--bg-elevated)', color: 'var(--text-code)',
+          padding: '1px 5px', borderRadius: 3,
+        }}>
+          {seg.slice(1, -1)}
+        </code>
+      );
+    }
+    return seg;
+  });
 }
 
 // ─── Block renderers ──────────────────────────────────────────────────────────
@@ -55,10 +69,7 @@ function renderTable(lines, key) {
           {rows.map((row, ri) => (
             <tr key={ri} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
               {row.map((cell, ci) => (
-                <td key={ci} style={{
-                  padding: '5px 12px', color: 'var(--text-secondary)',
-                  verticalAlign: 'top',
-                }}>
+                <td key={ci} style={{ padding: '5px 12px', color: 'var(--text-secondary)', verticalAlign: 'top' }}>
                   {renderInline(cell)}
                 </td>
               ))}
@@ -124,15 +135,42 @@ function renderBlock(lines, key) {
   return <div key={key} style={{ marginBottom: 6 }}>{elements}</div>;
 }
 
-// Strip [SOURCE: ...] markers and split into paragraph blocks for rendering
+// Strip [SOURCE: ...] markers, extract fenced code blocks, then render
 function parseContent(text) {
   if (!text) return null;
   const clean = text.replace(/\[SOURCE:\s*[^\]]+\]/g, '').replace(/\n{3,}/g, '\n\n').trim();
-  return clean
-    .split(/\n{2,}/)
-    .map(block => block.split('\n'))
-    .filter(lines => lines.some(l => l.trim()))
-    .map((lines, i) => renderBlock(lines, i));
+
+  // Split out fenced code blocks first
+  const parts = [];
+  const codeRe = /```(\w*)\n?([\s\S]*?)```/g;
+  let lastIdx = 0;
+  let m;
+  while ((m = codeRe.exec(clean)) !== null) {
+    if (m.index > lastIdx) parts.push({ type: 'text', content: clean.slice(lastIdx, m.index) });
+    parts.push({ type: 'code', lang: m[1], content: m[2] });
+    lastIdx = m.index + m[0].length;
+  }
+  if (lastIdx < clean.length) parts.push({ type: 'text', content: clean.slice(lastIdx) });
+
+  return parts.flatMap((part, i) => {
+    if (part.type === 'code') {
+      return (
+        <pre key={i} style={{
+          background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+          borderRadius: 6, padding: '10px 12px', overflowX: 'auto',
+          margin: '8px 0', fontSize: 12, fontFamily: 'JetBrains Mono, monospace',
+          color: 'var(--text-code)', lineHeight: 1.5,
+        }}>
+          <code>{part.content}</code>
+        </pre>
+      );
+    }
+    return part.content
+      .split(/\n{2,}/)
+      .map(block => block.split('\n'))
+      .filter(lines => lines.some(l => l.trim()))
+      .map((lines, j) => renderBlock(lines, `${i}-${j}`));
+  });
 }
 
 // ─── Sources footer ───────────────────────────────────────────────────────────
@@ -183,12 +221,7 @@ function SourcesFooter({ citations, activeCitation, onCitationClick }) {
               onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--bg-elevated)'; }}
               onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
             >
-              {/* Source colour dot */}
-              <span style={{
-                width: 9, height: 9, borderRadius: '50%',
-                background: color, flexShrink: 0, marginTop: 4,
-              }} />
-              {/* Title + meta */}
+              <span style={{ width: 9, height: 9, borderRadius: '50%', background: color, flexShrink: 0, marginTop: 4 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.4, fontWeight: 500 }}>
                   {c.title || c.record_id}
@@ -197,7 +230,6 @@ function SourcesFooter({ citations, activeCitation, onCitationClick }) {
                   {c.source_label}&nbsp;·&nbsp;{c.record_id}
                 </div>
               </div>
-              {/* Freshness pill */}
               <span style={{
                 fontSize: 10, fontFamily: 'JetBrains Mono, monospace',
                 color: fresh.color, background: fresh.color + '22',
@@ -217,7 +249,14 @@ function SourcesFooter({ citations, activeCitation, onCitationClick }) {
 // ─── MessageBubble ─────────────────────────────────────────────────────────────
 
 export default function MessageBubble({ message, activeCitation, onCitationClick, onFollowup }) {
-  const { role, content, citations = [], reasoning, error, errorDetail, followups = [], timestamp } = message;
+  const { role, content, citations = [], reasoning, error, errorDetail, followups = [], timestamp, streaming } = message;
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(content || '');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   if (role === 'user') {
     return (
@@ -248,16 +287,37 @@ export default function MessageBubble({ message, activeCitation, onCitationClick
     <div style={{ marginBottom: 24 }}>
       <div className="msg-assistant" style={{ padding: '14px 16px' }}>
 
-        {/* Timestamp */}
-        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>
-          Digital SME · {relativeTime(timestamp)}
+        {/* Header row: timestamp + copy button */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <RobotAvatar size={28} loading={streaming} />
+            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+              Digital SME · {relativeTime(timestamp)}
+              {streaming && (
+                <span style={{ marginLeft: 8, color: 'var(--accent-teal)' }}>thinking...</span>
+              )}
+            </div>
+          </div>
+          {content && !streaming && (
+            <button
+              onClick={handleCopy}
+              style={{
+                background: 'none', border: '1px solid var(--border-subtle)', borderRadius: 4,
+                color: copied ? 'var(--accent-green)' : 'var(--text-muted)',
+                fontSize: 10, padding: '2px 8px', cursor: 'pointer',
+                fontFamily: 'JetBrains Mono, monospace', transition: 'all 0.15s',
+              }}
+            >
+              {copied ? 'Copied' : 'Copy'}
+            </button>
+          )}
         </div>
 
         {/* Error state */}
         {error && (
           <div style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.3)', borderRadius: 6, padding: '10px 12px', marginBottom: 8 }}>
             <div style={{ color: 'var(--accent-red)', fontWeight: 600, fontSize: 13, marginBottom: 4 }}>
-              ⚠ {error}
+              {error}
             </div>
             {errorDetail && (
               <div style={{ color: 'var(--text-muted)', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}>
@@ -271,23 +331,28 @@ export default function MessageBubble({ message, activeCitation, onCitationClick
         {content && (
           <div className="prose-response" style={{ fontSize: 14, lineHeight: 1.55, color: 'var(--text-secondary)' }}>
             {parseContent(content)}
+            {streaming && (
+              <span className="streaming-cursor" />
+            )}
           </div>
         )}
 
-        {/* Consolidated sources footer */}
-        <SourcesFooter
-          citations={citedSources}
-          activeCitation={activeCitation}
-          onCitationClick={onCitationClick}
-        />
+        {/* Sources footer — only shown when complete */}
+        {!streaming && (
+          <SourcesFooter
+            citations={citedSources}
+            activeCitation={activeCitation}
+            onCitationClick={onCitationClick}
+          />
+        )}
 
         {/* Reasoning trace (collapsible) */}
-        {reasoning && <ReasoningTrace reasoning={reasoning} />}
+        {!streaming && reasoning && <ReasoningTrace reasoning={reasoning} />}
 
       </div>
 
       {/* Follow-up suggestions */}
-      {followups.length > 0 && (
+      {!streaming && followups.length > 0 && (
         <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {followups.map((q, i) => (
             <button key={i} className="followup-chip" onClick={() => onFollowup(q)}>

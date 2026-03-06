@@ -39,6 +39,20 @@ const APPS = [
     smeEnabled: true,
     activeIncidents: ['INC0091205 SEV3'],
   },
+  // TrueBank Digital SME — self-referential
+  {
+    id: 'APPID-7779311', name: 'TrueBank Digital SME', appid: 'APPID-7779311', tier: 3,
+    status: 'HEALTHY', statusColor: '#16A34A',
+    sources: [
+      { label: 'ServiceNow',  freshness: 'LIVE' },
+      { label: 'CI/CD',       freshness: 'LIVE' },
+      { label: 'AWS/CMDB',    freshness: 'LIVE' },
+      { label: 'Architecture',freshness: 'SYNCED' },
+      { label: 'Process Flow', freshness: 'SYNCED' },
+    ],
+    smeEnabled: true,
+    activeIncidents: [],
+  },
   // Other bank apps — no SME coverage
   { id: 'APPID-445821', name: 'Fraud Detection Engine',   appid: 'APPID-445821', tier: 1, status: 'HEALTHY', statusColor: '#16A34A', sources: [], smeEnabled: false },
   { id: 'APPID-100034', name: 'Core Banking Adapter',     appid: 'APPID-100034', tier: 1, status: 'HEALTHY', statusColor: '#16A34A', sources: [], smeEnabled: false },
@@ -59,8 +73,9 @@ const FRESHNESS_COLORS = {
 };
 
 const TIER_STYLES = {
-  1: { bg: 'rgba(220,38,38,0.12)', color: '#DC2626', border: 'rgba(220,38,38,0.3)', label: 'TIER 1' },
-  2: { bg: 'rgba(37,99,235,0.12)', color: '#3B82F6', border: 'rgba(37,99,235,0.3)', label: 'TIER 2' },
+  1: { bg: 'rgba(220,38,38,0.12)',  color: '#DC2626', border: 'rgba(220,38,38,0.3)',  label: 'TIER 1' },
+  2: { bg: 'rgba(37,99,235,0.12)',  color: '#3B82F6', border: 'rgba(37,99,235,0.3)',  label: 'TIER 2' },
+  3: { bg: 'rgba(13,148,136,0.12)', color: '#0D9488', border: 'rgba(13,148,136,0.3)', label: 'TIER 3' },
 };
 
 function AppCard({ app, onOpen }) {
@@ -207,6 +222,7 @@ export default function Dashboard() {
           <div>
             <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>TrueBank</span>
             <span style={{ fontSize: 11, color: 'var(--accent-teal)', letterSpacing: '0.06em', fontFamily: 'JetBrains Mono, monospace', marginLeft: 8 }}>DIGITAL SME</span>
+            <span style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace', marginLeft: 6 }}>v2.0</span>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 16, fontSize: 12 }}>
@@ -223,7 +239,7 @@ export default function Dashboard() {
             Application Portfolio
           </h1>
           <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-            {APPS.length} applications · Digital SME coverage: TruView Core, Web, Mobile
+            {APPS.length} applications · Digital SME coverage: TruView Core, Web, Mobile, Digital SME
           </p>
         </div>
 
@@ -269,7 +285,7 @@ export default function Dashboard() {
 
         {/* Footer note */}
         <div style={{ marginTop: 32, fontSize: 11, color: 'var(--text-muted)', borderTop: '1px solid var(--border-subtle)', paddingTop: 16 }}>
-          TrueBank Digital SME Platform · Prototype · Knowledge scope: TruView Platform only ·
+          TrueBank Digital SME Platform v2.0 · Prototype · Knowledge scope: TruView Platform + Digital SME ·
           Non-TruView applications require Digital SME team onboarding
         </div>
       </div>
