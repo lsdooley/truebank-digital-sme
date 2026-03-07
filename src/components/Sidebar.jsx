@@ -137,7 +137,7 @@ export default function Sidebar({ activeAppid, onAppChange, onQuery, loading, fr
               DIGITAL SME
             </span>
             <span style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace', letterSpacing: '0.04em' }}>
-              v2.0
+              v2.1
             </span>
           </div>
         </button>
