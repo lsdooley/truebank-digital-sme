@@ -183,7 +183,7 @@ export default function Sidebar({ activeAppid, onAppChange, onQuery, loading, fr
         Scope: TruView Platform POC<br />
         RAG · No tool-calling<br />
         <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9 }}>
-          Built {__BUILD_TIME__} EST
+          Built {typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : 'unknown'} EST
         </span>
       </div>
     </div>

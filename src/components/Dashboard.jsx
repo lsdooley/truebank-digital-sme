@@ -78,7 +78,7 @@ const TIER_STYLES = {
   3: { bg: 'rgba(13,148,136,0.12)', color: '#0D9488', border: 'rgba(13,148,136,0.3)', label: 'TIER 3' },
 };
 
-function AppCard({ app, onOpen }) {
+function AppCard({ app }) {
   const tierStyle = TIER_STYLES[app.tier];
   const navigate = useNavigate();
 
@@ -201,9 +201,11 @@ function AppCard({ app, onOpen }) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const degradedCount = APPS.filter(a => a.status === 'DEGRADED').length;
+  const degradedApps = APPS.filter(a => a.status === 'DEGRADED');
+  const degradedCount = degradedApps.length;
   const monitoringCount = APPS.filter(a => a.status === 'MONITORING').length;
   const healthyCount = APPS.filter(a => a.status === 'HEALTHY').length;
+  const firstDegradedSme = degradedApps.find(a => a.smeEnabled);
 
   return (
     <div style={{ height: '100vh', overflowY: 'auto', background: 'var(--bg-primary)' }}>
@@ -259,16 +261,18 @@ export default function Dashboard() {
             <span style={{ fontSize: 13, color: 'var(--accent-amber)', fontWeight: 500 }}>
               {degradedCount} application{degradedCount > 1 ? 's' : ''} degraded — active incidents in progress
             </span>
-            <button
-              onClick={() => navigate('/chat/APPID-973193')}
-              style={{
-                marginLeft: 'auto', fontSize: 12, padding: '4px 12px',
-                background: 'rgba(217,119,6,0.15)', border: '1px solid rgba(217,119,6,0.4)',
-                borderRadius: 5, color: 'var(--accent-amber)', cursor: 'pointer',
-              }}
-            >
-              View in SME →
-            </button>
+            {firstDegradedSme && (
+              <button
+                onClick={() => navigate(`/chat/${firstDegradedSme.appid}`)}
+                style={{
+                  marginLeft: 'auto', fontSize: 12, padding: '4px 12px',
+                  background: 'rgba(217,119,6,0.15)', border: '1px solid rgba(217,119,6,0.4)',
+                  borderRadius: 5, color: 'var(--accent-amber)', cursor: 'pointer',
+                }}
+              >
+                View in SME →
+              </button>
+            )}
           </div>
         )}
 
