@@ -187,9 +187,17 @@ const TYPE_STYLE = {
 
 const CHANGELOG = [
   {
-    version: 'v2.3',
+    version: 'v2.4',
     date: '2026-03-11',
     current: true,
+    changes: [
+      { type: 'feat', text: 'Session record cards now open a cyberpunk-styled modal on click, showing the record details, freshness, and a deep-link target explaining where the engineer would be taken in a production deployment.' },
+    ],
+  },
+  {
+    version: 'v2.3',
+    date: '2026-03-11',
+    current: false,
     changes: [
       { type: 'feat',  text: 'Added CloudWatch → DynamoDB live log sync pipeline. A new Lambda runs every 15 minutes, querying Logs Insights for Lambda performance, errors, and invocation trends, and writing them as live knowledge chunks into DynamoDB.' },
       { type: 'feat',  text: 'RAG retrieval layer now merges static knowledge base with live DynamoDB chunks at query time (5-minute cache), enabling real operational questions like "any errors in the last 15 minutes?" and "what is the Lambda latency trend?"' },
@@ -317,7 +325,7 @@ export default function About() {
           About This Application
         </h1>
         <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 36 }}>
-          TrueBank Digital SME · v2.3 · Prototype
+          TrueBank Digital SME · v2.4 · Prototype
         </p>
 
         {/* What it is */}
