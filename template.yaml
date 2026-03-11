@@ -12,9 +12,9 @@ Globals:
 
 Parameters:
   AnthropicApiKey:
-    Type: String
-    NoEcho: true
-    Description: Anthropic API key for Claude Haiku
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /truebank-sme/anthropic-api-key
+    Description: Anthropic API key — resolved from SSM Parameter Store at deploy time
 
 Resources:
 
