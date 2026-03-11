@@ -187,9 +187,18 @@ const TYPE_STYLE = {
 
 const CHANGELOG = [
   {
-    version: 'v2.2',
+    version: 'v2.3',
     date: '2026-03-11',
     current: true,
+    changes: [
+      { type: 'feat',  text: 'Added CloudWatch → DynamoDB live log sync pipeline. A new Lambda runs every 15 minutes, querying Logs Insights for Lambda performance, errors, and invocation trends, and writing them as live knowledge chunks into DynamoDB.' },
+      { type: 'feat',  text: 'RAG retrieval layer now merges static knowledge base with live DynamoDB chunks at query time (5-minute cache), enabling real operational questions like "any errors in the last 15 minutes?" and "what is the Lambda latency trend?"' },
+    ],
+  },
+  {
+    version: 'v2.2',
+    date: '2026-03-11',
+    current: false,
     changes: [
       { type: 'fix',   text: 'Degraded banner "View in SME" button now navigates to the first SME-enabled degraded app dynamically instead of hardcoding TruView Core.' },
       { type: 'fix',   text: 'Added typeof guard on __BUILD_TIME__ in Sidebar footer to prevent ReferenceError if Vite define is missing.' },
@@ -308,7 +317,7 @@ export default function About() {
           About This Application
         </h1>
         <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 36 }}>
-          TrueBank Digital SME · v2.2 · Prototype
+          TrueBank Digital SME · v2.3 · Prototype
         </p>
 
         {/* What it is */}

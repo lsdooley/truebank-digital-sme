@@ -1,4 +1,5 @@
 import { knowledgeBase, chunkFreshness } from './data/index.js';
+import { getLiveChunks } from './dynamo.js';
 
 const STOP_WORDS = new Set([
   'a','an','the','is','are','was','were','be','been','being','have','has','had',
@@ -111,7 +112,7 @@ function scoreChunk(chunk, queryTokens, queryPhrases, queryLower, appid) {
 
 // ─── RETRIEVAL ───────────────────────────────────────────────────────────────
 
-export function retrieveChunks(query, options = {}) {
+export async function retrieveChunks(query, options = {}) {
   const {
     appid,
     maxChunks = 4,       // Pool A: app-scoped chunks
@@ -124,12 +125,16 @@ export function retrieveChunks(query, options = {}) {
   const queryPhrases = extractPhrases(query);
   const queryLower = query.toLowerCase();
 
-  if (queryTokens.length === 0) return { chunks: [], intent: { policyIntent: false, cveIntent: false } };
+  if (queryTokens.length === 0) return { chunks: [], intent: { policyIntent: false, cveIntent: false }, totalEvaluated: 0 };
 
   const intent = detectIntent(query);
 
+  // Merge static knowledge base with live DynamoDB chunks
+  const liveChunks = await getLiveChunks();
+  const allChunks = [...knowledgeBase, ...liveChunks];
+
   // ── Pool A: app-scoped chunks (always) ──────────────────────────────────
-  let appCandidates = knowledgeBase.filter(c => c.appid !== 'POLICY' && c.appid !== 'CVE');
+  let appCandidates = allChunks.filter(c => c.appid !== 'POLICY' && c.appid !== 'CVE');
   if (appid && appid !== 'ALL') {
     appCandidates = appCandidates.filter(c => c.appid === appid || c.appid === 'ALL');
   }
@@ -143,7 +148,7 @@ export function retrieveChunks(query, options = {}) {
   // ── Pool B: policy chunks (conditional on policyIntent) ─────────────────
   let policyChunks = [];
   if (intent.policyIntent) {
-    policyChunks = knowledgeBase
+    policyChunks = allChunks
       .filter(c => c.appid === 'POLICY')
       .map(chunk => scoreChunk(chunk, queryTokens, queryPhrases, queryLower, null))
       .filter(c => c.score >= minScore)
@@ -154,7 +159,7 @@ export function retrieveChunks(query, options = {}) {
   // ── Pool C: CVE chunks (conditional on cveIntent) ───────────────────────
   let cveChunks = [];
   if (intent.cveIntent) {
-    cveChunks = knowledgeBase
+    cveChunks = allChunks
       .filter(c => c.appid === 'CVE')
       .map(chunk => scoreChunk(chunk, queryTokens, queryPhrases, queryLower, null))
       .filter(c => c.score >= minScore)
@@ -164,7 +169,7 @@ export function retrieveChunks(query, options = {}) {
 
   const chunks = [...appChunks, ...policyChunks, ...cveChunks];
 
-  return { chunks, intent };
+  return { chunks, intent, totalEvaluated: allChunks.length };
 }
 
 export function getQueryTokens(query) {

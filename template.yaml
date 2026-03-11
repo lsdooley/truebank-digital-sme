@@ -18,6 +18,26 @@ Parameters:
 
 Resources:
 
+  # ── DynamoDB live chunks table ──────────────────────────────────────────────
+  LiveChunksTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: truebank-sme-live-chunks
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: source
+          AttributeType: S
+        - AttributeName: record_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: source
+          KeyType: HASH
+        - AttributeName: record_id
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
   # ── Backend Lambda ─────────────────────────────────────────────────────────
   ApiFunction:
     Type: AWS::Serverless::Function
@@ -30,6 +50,10 @@ Resources:
         Variables:
           ANTHROPIC_API_KEY: !Ref AnthropicApiKey
           NODE_ENV: production
+          TABLE_NAME: !Ref LiveChunksTable
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref LiveChunksTable
       Events:
         ApiProxy:
           Type: HttpApi
@@ -37,6 +61,37 @@ Resources:
             ApiId: !Ref HttpApi
             Path: /api/{proxy+}
             Method: ANY
+
+  # ── Log sync Lambda ─────────────────────────────────────────────────────────
+  LogSyncFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: truebank-sme-log-sync
+      Handler: index.handler
+      CodeUri: sync-lambda/
+      Description: Syncs CloudWatch Logs Insights data into DynamoDB as RAG chunks
+      Timeout: 120
+      MemorySize: 256
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref LiveChunksTable
+          LOG_GROUP: !Sub '/aws/lambda/truebank-sme-api'
+      Policies:
+        - DynamoDBWritePolicy:
+            TableName: !Ref LiveChunksTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - logs:StartQuery
+                - logs:GetQueryResults
+                - logs:StopQuery
+              Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/truebank-sme-api*'
+      Events:
+        Schedule:
+          Type: Schedule
+          Properties:
+            Schedule: rate(15 minutes)
+            Enabled: true
 
   HttpApi:
     Type: AWS::Serverless::HttpApi
@@ -135,3 +190,6 @@ Outputs:
   FrontendBucket:
     Description: S3 bucket name for frontend
     Value: !Ref FrontendBucket
+  LiveChunksTable:
+    Description: DynamoDB table for live CloudWatch log chunks
+    Value: !Ref LiveChunksTable
