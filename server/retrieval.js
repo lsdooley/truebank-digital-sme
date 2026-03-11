@@ -62,14 +62,28 @@ const CVE_KEYWORDS = new Set([
   'redos', 'dos', 'supply-chain', 'advisory', 'disclosure', 'remediat',
 ]);
 
+// Live/metrics intent — triggers Pool D (CloudWatch live chunks)
+const LIVE_KEYWORDS = new Set([
+  'request', 'requests', 'traffic', 'invocation', 'invocations', 'call', 'calls',
+  'today', 'right now', 'currently', 'recent', 'recently', 'last hour', 'last 15',
+  'performance', 'latency', 'duration', 'slow', 'fast', 'p95', 'p99',
+  'error', 'errors', 'exception', 'exceptions', 'failing', 'failed', 'failure',
+  'memory', 'cold start', 'coldstart', 'timeout', 'throttle', 'throttling',
+  'healthy', 'health', 'uptime', 'availability', 'status',
+  'how many', 'how much', 'count', 'volume', 'trend', 'spike',
+]);
+
 export function detectIntent(query) {
   const words = query.toLowerCase().split(/[\s\.,;:!?()\[\]{}\-\/\\]+/);
   const stemmed = words.map(stem);
+  const queryLower = query.toLowerCase();
 
   const policyIntent = stemmed.some(w => POLICY_KEYWORDS.has(w) || [...POLICY_KEYWORDS].some(k => w.startsWith(k)));
-  const cveIntent = stemmed.some(w => CVE_KEYWORDS.has(w) || [...CVE_KEYWORDS].some(k => w.startsWith(k)));
+  const cveIntent    = stemmed.some(w => CVE_KEYWORDS.has(w)    || [...CVE_KEYWORDS].some(k => w.startsWith(k)));
+  const liveIntent   = stemmed.some(w => LIVE_KEYWORDS.has(w)   || [...LIVE_KEYWORDS].some(k => w.startsWith(k)))
+                    || [...LIVE_KEYWORDS].some(phrase => phrase.includes(' ') && queryLower.includes(phrase));
 
-  return { policyIntent, cveIntent };
+  return { policyIntent, cveIntent, liveIntent };
 }
 
 // ─── CHUNK SCORING ───────────────────────────────────────────────────────────
@@ -118,6 +132,7 @@ export async function retrieveChunks(query, options = {}) {
     maxChunks = 4,       // Pool A: app-scoped chunks
     maxPolicyChunks = 2, // Pool B: policy chunks (only if policyIntent)
     maxCveChunks = 2,    // Pool C: CVE chunks (only if cveIntent)
+    maxLiveChunks = 3,   // Pool D: live CloudWatch chunks (only if liveIntent)
     minScore = 0.5,
   } = options;
 
@@ -125,7 +140,7 @@ export async function retrieveChunks(query, options = {}) {
   const queryPhrases = extractPhrases(query);
   const queryLower = query.toLowerCase();
 
-  if (queryTokens.length === 0) return { chunks: [], intent: { policyIntent: false, cveIntent: false }, totalEvaluated: 0 };
+  if (queryTokens.length === 0) return { chunks: [], intent: { policyIntent: false, cveIntent: false, liveIntent: false }, totalEvaluated: 0 };
 
   const intent = detectIntent(query);
 
@@ -167,7 +182,18 @@ export async function retrieveChunks(query, options = {}) {
       .slice(0, maxCveChunks);
   }
 
-  const chunks = [...appChunks, ...policyChunks, ...cveChunks];
+  // ── Pool D: live CloudWatch chunks (conditional on liveIntent) ─────────
+  let liveChunksPool = [];
+  if (intent.liveIntent && liveChunks.length > 0) {
+    const liveAppid = (appid && appid !== 'ALL') ? appid : null;
+    liveChunksPool = liveChunks
+      .filter(c => !liveAppid || c.appid === liveAppid || c.appid === 'ALL')
+      .map(chunk => scoreChunk(chunk, queryTokens, queryPhrases, queryLower, appid))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, maxLiveChunks);
+  }
+
+  const chunks = [...appChunks, ...policyChunks, ...cveChunks, ...liveChunksPool];
 
   return { chunks, intent, totalEvaluated: allChunks.length };
 }
