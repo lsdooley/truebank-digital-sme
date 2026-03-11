@@ -12,44 +12,65 @@ export const smeArchitectureChunks = [
     text: `ARCHITECTURE ARTIFACT: TrueBank Digital SME RAG Architecture
 Type: System Architecture Overview
 Owner: Platform AI Team
-Last Reviewed: 2025-03-04
-Status: Current (reflects production state)
+Last Reviewed: 2026-03-11
+Status: Current (reflects production state — v2.3)
 
 SYSTEM OVERVIEW:
-The TrueBank Digital SME is a Retrieval-Augmented Generation (RAG) system. It answers operations team questions by: (1) retrieving relevant records from a knowledge base using keyword scoring, (2) injecting those records as context into a Claude prompt, and (3) returning Claude's grounded, cited response.
+The TrueBank Digital SME is a Retrieval-Augmented Generation (RAG) system. It answers operations team questions by: (1) retrieving relevant records from a knowledge base using keyword scoring, (2) injecting those records as context into a Claude prompt, and (3) returning Claude's grounded, cited response. As of v2.3, the knowledge base is hybrid: static in-memory chunks plus live chunks synced from CloudWatch Logs every 15 minutes via DynamoDB.
 
 COMPONENTS:
 
 1. FRONTEND (React/Vite → S3 → CloudFront)
-   - ChatInterface.jsx: query input, response rendering, markdown display
+   - ChatInterface.jsx: query input, streaming response rendering, markdown display
    - AppSelector.jsx: scope selector (TruView Core / Web / Mobile / SME / All)
    - ReasoningTrace.jsx: shows retrieval debug info (tokens, scores, chunks evaluated)
-   - SourceBadge.jsx: displays cited and retrieved sources
-   - Dashboard.jsx: wraps all components, manages layout
+   - Dashboard.jsx: application portfolio, degraded banner with dynamic SME routing
+   - About.jsx: architecture overview, process flow diagram, versioned changelog
+   - Sidebar.jsx: quick queries scoped per app, session stats, build time
 
 2. API LAYER (Amazon API Gateway HTTP API)
-   - POST /api/chat: main query endpoint
+   - POST /api/chat: main query endpoint (non-streaming)
+   - POST /api/chat/stream: SSE streaming variant
    - GET /api/health: chunk count and server status
    - GET /api/freshness: source freshness status per app scope
    - CORS: enabled (POC — wildcard origin)
 
 3. COMPUTE (AWS Lambda — truebank-sme-api)
-   - server/app.js: Express router (wrapped for Lambda via aws-serverless-express)
-   - server/retrieval.js: keyword scoring retrieval engine
-   - server/haiku.js: Claude API client, prompt construction, response parsing
+   - server/app.js: Express router (wrapped for Lambda via @vendia/serverless-express)
+   - server/retrieval.js: async keyword scoring retrieval — 4 pools (app, policy, CVE, live)
+   - server/dynamo.js: DynamoDB live chunk reader with 5-minute in-memory cache
+   - server/haiku.js: Claude API client, prompt construction, citation extraction
    - server/lambda.js: Lambda handler wrapper
 
-4. KNOWLEDGE BASE (in-memory, loaded at cold start)
+4. KNOWLEDGE BASE — STATIC (in-memory, loaded at cold start)
    - server/data/index.js: loads and timestamps all chunk arrays
-   - 13 data source files covering ServiceNow, Confluence, Dynatrace, CI/CD, AWS, Architecture, Onboarding, Process Flow, Policy (global), CVE (global)
-   - 152 chunks across 4 applications (APPID-973193, APPID-871198, APPID-871204, APPID-7779311) + 2 global pools (POLICY, CVE)
+   - 115 chunks across 4 apps + 2 global pools (POLICY, CVE)
+   - Sources: ServiceNow, Confluence, Dynatrace, CI/CD, AWS/CMDB, Architecture, Onboarding, Process Flow, Policy, CVE
 
-5. AI MODEL (Anthropic Claude)
+4b. KNOWLEDGE BASE — LIVE (DynamoDB, refreshed every 15 min)
+   - Table: truebank-sme-live-chunks (PAY_PER_REQUEST, 24h TTL auto-expiry)
+   - 3 live chunks written by log-sync Lambda: CW-PERF-CURRENT, CW-ERRORS-CURRENT, CW-TREND-6H
+   - Merged with static chunks at query time via server/dynamo.js (5-min cache)
+
+5. LOG SYNC (AWS Lambda — truebank-sme-log-sync)
+   - Triggered: EventBridge rate(15 minutes)
+   - Queries CloudWatch Logs Insights for /aws/lambda/truebank-sme-api
+   - Writes 3 structured knowledge chunks to DynamoDB (performance, errors, 6h trend)
+   - Enables live operational queries: errors in last 15 min, request volume, latency trend
+
+6. AI MODEL (Anthropic Claude)
    - Model: claude-haiku-4-5-20251001
    - Static system prompt (enables prompt caching)
    - Dynamic user message: scope + timestamp + retrieved chunks (truncated at 2,000 chars) + question
    - max_tokens: 1,500
-   - Prompt cache hit rate: ~87% (warm traffic)`,
+   - Prompt cache hit rate: ~87% (warm traffic)
+
+RETRIEVAL POOLS:
+   Pool A (always): app-scoped static chunks — maxChunks=4
+   Pool B (policyIntent): global POLICY pool — maxPolicyChunks=2
+   Pool C (cveIntent): global CVE pool — maxCveChunks=2
+   Pool D (liveIntent): live DynamoDB chunks — maxLiveChunks=3
+   Intent triggered by keyword sets in query (requests, errors, latency, today, etc.)`,
     tags: ['architecture', 'rag', 'sme', 'overview', 'lambda', 'claude', 'retrieval', 'knowledge-base', 'components'],
     classification: 'INTERNAL',
     freshness_ts: '2025-03-04T08:00:00Z',
@@ -89,10 +110,13 @@ CONSEQUENCES:
 - No semantic (vector) search — keyword scoring only; misses synonyms and intent nuance
 - Cannot scale beyond ~10,000 chunks without hitting Lambda memory limits
 
-MIGRATION PATH (production):
-When the POC converts to production: DynamoDB for chunk storage + Bedrock Titan Embeddings for vectors + cosine similarity in Lambda. Migration is isolated to server/retrieval.js and server/data/index.js — no frontend or prompt changes required.
+UPDATE (2026-03-11 — v2.3):
+Phase 1 of the DynamoDB migration path has been implemented. A DynamoDB table (truebank-sme-live-chunks) now stores live operational data from CloudWatch Logs, synced every 15 minutes. The in-memory knowledge base remains for the stable static corpus. This is a hybrid approach: static chunks in memory, live/volatile chunks in DynamoDB.
 
-REVIEW DATE: After stakeholder sign-off on POC — estimated Q2 2025`,
+MIGRATION PATH (production):
+Full migration: DynamoDB for all chunk storage + Bedrock Titan Embeddings for vectors + cosine similarity in Lambda. Migration is isolated to server/retrieval.js and server/data/index.js — no frontend or prompt changes required.
+
+REVIEW DATE: After stakeholder sign-off on POC`,
     tags: ['adr', 'architecture', 'sme', 'knowledge-base', 'in-memory', 'database', 'rag', 'design-decision'],
     classification: 'INTERNAL',
     freshness_ts: '2025-02-28T10:00:00Z',
@@ -135,6 +159,53 @@ UPGRADE PATH: If quality feedback requires Sonnet, change model ID in haiku.js �
     classification: 'INTERNAL',
     freshness_ts: '2025-02-28T10:00:00Z',
     ingest_ts: '2025-03-04T08:05:00Z',
+    ttl_hours: 168,
+    meta: { doc_type: 'ADR', status: 'Accepted', owner: 'Platform AI Team' }
+  },
+
+  {
+    id: 'sme_arch_004',
+    appid: 'APPID-7779311',
+    source: 'architecture_ea',
+    source_label: 'Architecture/ADR',
+    record_id: 'ADR-SME-003',
+    title: 'ADR-SME-003: CloudWatch Logs Insights → DynamoDB for live operational knowledge',
+    text: `ARCHITECTURE DECISION RECORD: ADR-SME-003
+Title: Use CloudWatch Logs Insights + DynamoDB for live operational knowledge chunks
+Status: Accepted
+Date: 2026-03-11
+Author: Platform AI Team
+
+CONTEXT:
+The Digital SME knowledge base was entirely static — updated only on Lambda redeployment. This meant the SME could not answer questions about live operational state: current error rates, request volumes, Lambda latency trends. Options considered: (1) Amazon OpenSearch Service with log ingestion pipeline, (2) CloudWatch Logs Insights + Lambda sync to DynamoDB, (3) direct CloudWatch Logs API calls at query time, (4) Bedrock Knowledge Bases with S3 data source.
+
+DECISION:
+CloudWatch Logs Insights → DynamoDB via a scheduled sync Lambda (rate: 15 minutes).
+
+RATIONALE:
+1. Free tier fit: CloudWatch Logs Insights is included in free tier usage for this log volume. DynamoDB PAY_PER_REQUEST at <100 writes/day costs ~$0.00. OpenSearch minimum instance (t3.small) costs ~$25/month after 12-month free tier expires.
+2. No new service dependency: CloudWatch is already capturing Lambda logs. DynamoDB was the natural next step in the existing architecture.
+3. Latency: DynamoDB Scan at 3 items is <5ms. Querying CloudWatch Logs Insights at query time would add 2–10 seconds per request (async query polling).
+4. Simplicity: Sync Lambda is 150 lines. OpenSearch ingestion pipeline (Kinesis Firehose + index mapping + IAM) would be 3–5x the infrastructure complexity.
+5. Graceful degradation: If DynamoDB is unavailable, server/dynamo.js returns stale cache or empty array — SME continues with static knowledge base only.
+
+IMPLEMENTATION:
+- sync-lambda/index.mjs: queries 3 Logs Insights patterns (REPORT perf, ERROR filter, hourly trend), writes to DynamoDB with 24h TTL
+- server/dynamo.js: reads live chunks with 5-min in-memory cache
+- retrieval.js Pool D: liveIntent detection surfaces CloudWatch chunks for operational queries
+- Chunks use the same schema as static chunks — no retrieval engine changes required
+
+CONSEQUENCES:
+- Live data is up to 15 minutes stale (acceptable for operational queries)
+- Only covers Lambda metrics — no RDS, ECS, or external service logs (sufficient for SME self-monitoring)
+- DynamoDB TTL means chunks auto-expire after 24h — no manual cleanup required
+
+FUTURE:
+If log volume grows or other services need coverage, consider Amazon Data Firehose → S3 → Athena for historical queries alongside this pattern for real-time.`,
+    tags: ['adr', 'architecture', 'sme', 'cloudwatch', 'dynamodb', 'live-sync', 'logs', 'design-decision', 'v2.3'],
+    classification: 'INTERNAL',
+    freshness_ts: '2026-03-11T07:00:00Z',
+    ingest_ts: '2026-03-11T07:00:00Z',
     ttl_hours: 168,
     meta: { doc_type: 'ADR', status: 'Accepted', owner: 'Platform AI Team' }
   },

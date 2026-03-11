@@ -91,6 +91,146 @@ Lambda functions reading from SSM Parameter Store must have explicit ssm:GetPara
   },
 
   {
+    id: 'sme_pipe_004',
+    appid: 'APPID-7779311',
+    source: 'cicd_pipelines',
+    source_label: 'CI/CD',
+    record_id: 'PIPE-SME-6101-PROD',
+    title: 'Pipeline run — v2.1 About page + diagrams deployment (SUCCESS)',
+    text: `CI/CD PIPELINE RUN: PIPE-SME-6101-PROD
+Application: TrueBank Digital SME (APPID-7779311)
+Pipeline: truebank-sme-prod-deploy
+Status: SUCCESS
+Triggered: 2026-03-07T23:37:00Z
+Completed: 2026-03-07T23:52:00Z
+Duration: 15 minutes
+Version: v2.1
+Author: l.dooley@truebank.com.au
+Commit: 2728cef
+
+CHANGES DEPLOYED:
+- Added About This Application page (/about route)
+- Added inline HTML/CSS RAG process flow diagram
+- Added Python Diagrams architecture diagram (architecture.py)
+- Added Python Graphviz process flow generator (process_flow.py)
+- Added versioned changelog to About page
+- Added About page link to Dashboard footer
+- Bumped version to v2.1 across Sidebar, Dashboard, About
+
+PIPELINE STAGES:
+1. npm run build (Vite) — 2m 27s — PASSED
+2. S3 sync (frontend only, no Lambda changes) — 0m 55s — PASSED
+3. CloudFront invalidation — 0m 30s — PASSED
+
+POST-DEPLOY VALIDATION:
+- Frontend load: HTTP 200 from CloudFront ✓
+- /about route renders correctly ✓`,
+    tags: ['pipeline', 'deployment', 'sme', 'v2.1', 'about-page', 'frontend', 'success'],
+    classification: 'INTERNAL',
+    freshness_ts: '2026-03-07T23:52:00Z',
+    ingest_ts: '2026-03-07T23:52:00Z',
+    ttl_hours: 72,
+    meta: { status: 'SUCCESS', duration_min: 15, version: 'v2.1', author: 'l.dooley@truebank.com.au' }
+  },
+
+  {
+    id: 'sme_pipe_005',
+    appid: 'APPID-7779311',
+    source: 'cicd_pipelines',
+    source_label: 'CI/CD',
+    record_id: 'PIPE-SME-6115-PROD',
+    title: 'Pipeline run — v2.2 bug fixes deployment (SUCCESS)',
+    text: `CI/CD PIPELINE RUN: PIPE-SME-6115-PROD
+Application: TrueBank Digital SME (APPID-7779311)
+Pipeline: truebank-sme-prod-deploy
+Status: SUCCESS
+Triggered: 2026-03-11T06:10:00Z
+Completed: 2026-03-11T06:14:00Z
+Duration: 4 minutes
+Version: v2.2
+Author: l.dooley@truebank.com.au
+Commit: d66f68e
+
+CHANGES DEPLOYED (code review fixes):
+- FIX: Degraded banner "View in SME" button now navigates to first SME-enabled
+  degraded app dynamically — previously hardcoded to APPID-973193 (TruView Core)
+- FIX: Added typeof guard on __BUILD_TIME__ in Sidebar footer to prevent
+  ReferenceError if Vite define config is missing — falls back to 'unknown'
+- CHORE: Removed unused onOpen prop from AppCard component
+
+PIPELINE STAGES:
+1. npm run build (Vite) — 1m 18s — PASSED
+2. S3 sync (frontend only) — 0m 46s — PASSED
+3. CloudFront invalidation — 0m 30s — PASSED
+
+POST-DEPLOY VALIDATION:
+- Dashboard degraded banner routes correctly ✓
+- Sidebar build time displays correctly ✓`,
+    tags: ['pipeline', 'deployed', 'changes-deployed', 'recent-changes', 'sme', 'v2.2', 'bug-fix', 'frontend', 'success', 'code-review'],
+    classification: 'INTERNAL',
+    freshness_ts: '2026-03-11T06:14:00Z',
+    ingest_ts: '2026-03-11T06:14:00Z',
+    ttl_hours: 72,
+    meta: { status: 'SUCCESS', duration_min: 4, version: 'v2.2', author: 'l.dooley@truebank.com.au' }
+  },
+
+  {
+    id: 'sme_pipe_006',
+    appid: 'APPID-7779311',
+    source: 'cicd_pipelines',
+    source_label: 'CI/CD',
+    record_id: 'PIPE-SME-6122-PROD',
+    title: 'Pipeline run — v2.3 CloudWatch live log sync deployment (SUCCESS)',
+    text: `CI/CD PIPELINE RUN: PIPE-SME-6122-PROD
+Application: TrueBank Digital SME (APPID-7779311)
+Pipeline: truebank-sme-prod-deploy
+Status: SUCCESS
+Triggered: 2026-03-11T06:38:00Z
+Completed: 2026-03-11T07:05:00Z
+Duration: 27 minutes
+Version: v2.3
+Author: l.dooley@truebank.com.au
+Commit: 010fa6d
+
+CHANGES DEPLOYED:
+- NEW: sync-lambda/index.mjs — CloudWatch Logs Insights → DynamoDB sync Lambda
+  Runs every 15 minutes via EventBridge. Queries REPORT lines (performance),
+  ERROR lines, and 6-hour invocation trend. Writes 3 knowledge chunks to DynamoDB.
+- NEW: server/dynamo.js — DynamoDB live chunk reader with 5-minute in-memory cache.
+  Gracefully returns empty array if TABLE_NAME env var not set (local dev).
+- CHANGE: server/retrieval.js — retrieveChunks() made async. Merges static
+  knowledge base with live DynamoDB chunks at query time.
+- CHANGE: server/app.js — await added to retrieveChunks() in chat and stream endpoints.
+- CHANGE: template.yaml — added LiveChunksTable (DynamoDB PAY_PER_REQUEST with TTL),
+  LogSyncFunction (EventBridge rate 15 min), DynamoDBReadPolicy on ApiFunction.
+
+NEW AWS RESOURCES CREATED:
+- DynamoDB table: truebank-sme-live-chunks (PAY_PER_REQUEST, 24h TTL)
+- Lambda function: truebank-sme-log-sync (256MB, 120s timeout)
+- EventBridge rule: rate(15 minutes) → truebank-sme-log-sync
+
+INCIDENT DURING DEPLOY:
+PIPE-SME-6122 triggered two earlier failed SAM deploys that passed the literal
+string "UsePreviousValue" as the ANTHROPIC_API_KEY parameter, overwriting the
+real key. App was unavailable for ~20 minutes. Resolved by:
+1. Restoring key directly via aws lambda update-function-configuration
+2. Storing key in SSM Parameter Store at /truebank-sme/anthropic-api-key
+3. Creating deploy.sh that reads key from SSM at deploy time
+4. Adding liveIntent pool (Pool D) to retrieval so CloudWatch chunks surface
+
+POST-DEPLOY VALIDATION:
+- Lambda health: GET /api/health → HTTP 200 ✓
+- DynamoDB sync: 3 chunks written within 15 min of deploy ✓
+- Live query test: "how many requests today" → returns CW-TREND-6H chunk ✓`,
+    tags: ['pipeline', 'deployed', 'changes-deployed', 'recent-changes', 'sme', 'v2.3', 'cloudwatch', 'dynamodb', 'live-sync', 'success', 'incident'],
+    classification: 'INTERNAL',
+    freshness_ts: '2026-03-11T07:05:00Z',
+    ingest_ts: '2026-03-11T07:05:00Z',
+    ttl_hours: 72,
+    meta: { status: 'SUCCESS', duration_min: 27, version: 'v2.3', author: 'l.dooley@truebank.com.au' }
+  },
+
+  {
     id: 'sme_pipe_003',
     appid: 'APPID-7779311',
     source: 'cicd_pipelines',
@@ -99,31 +239,34 @@ Lambda functions reading from SSM Parameter Store must have explicit ssm:GetPara
     title: 'TrueBank Digital SME deployment history — all production deployments',
     text: `DEPLOYMENT HISTORY: TrueBank Digital SME (APPID-7779311)
 Source: GitHub (lsdooley/truebank-digital-sme) + AWS SAM CLI
-Last Updated: 2025-03-04T10:00:00Z
+Last Updated: 2026-03-11T07:10:00Z
 
 Production Deployments (newest first):
 
-1. PIPE-SME-5890-PROD | 2025-03-04 08:00 UTC | SUCCESS | CHG0104890 | KB expansion: policy, CVE, process flow, SME self-data (80→152 chunks) | l.dooley
-2. PIPE-SME-5021-PROD | 2025-03-02 10:28 UTC | SUCCESS | CHG0105021 | Token optimisation: static prompt, chunk truncation, maxChunks 6→4 | l.dooley
-3. PIPE-SME-5001-PROD | 2025-03-01 18:00 UTC | SUCCESS | CHG0104950 | Added architecture_extra and confluence_extra knowledge base files | l.dooley
-4. PIPE-SME-4999-PROD | 2025-02-28 23:22 UTC | SUCCESS | (re-run after 4998 fail) | Initial production deployment | l.dooley
-5. PIPE-SME-4998-PROD | 2025-02-28 22:58 UTC | FAILED   | Initial deployment — IAM SSM permission missing | l.dooley
+1. PIPE-SME-6122-PROD | 2026-03-11 07:05 UTC | SUCCESS | v2.3 | CloudWatch→DynamoDB live log sync; async retrieval; liveIntent pool; SSM key fix | l.dooley
+2. PIPE-SME-6115-PROD | 2026-03-11 06:14 UTC | SUCCESS | v2.2 | Bug fixes: degraded banner routing, __BUILD_TIME__ guard, dead prop removal | l.dooley
+3. PIPE-SME-6101-PROD | 2026-03-07 23:52 UTC | SUCCESS | v2.1 | About page, process flow diagram, architecture diagram, changelog | l.dooley
+4. PIPE-SME-5890-PROD | 2025-03-04 08:00 UTC | SUCCESS | v2.0 | KB expansion: policy, CVE, process flow, SME self-data (80→115 chunks) | l.dooley
+5. PIPE-SME-5021-PROD | 2025-03-02 10:28 UTC | SUCCESS | v1.1 | Token optimisation: static prompt, chunk truncation, maxChunks 6→4 | l.dooley
+6. PIPE-SME-5001-PROD | 2025-03-01 18:00 UTC | SUCCESS | v1.0 | Added architecture_extra and confluence_extra knowledge base files | l.dooley
+7. PIPE-SME-4999-PROD | 2025-02-28 23:22 UTC | SUCCESS | v1.0 | Initial production deployment (re-run after 4998 fail) | l.dooley
+8. PIPE-SME-4998-PROD | 2025-02-28 22:58 UTC | FAILED   | v1.0 | Initial deployment — IAM SSM permission missing | l.dooley
 
 DEPLOYMENT TOOLCHAIN:
 - Source: GitHub repo lsdooley/truebank-digital-sme (main branch)
-- Build: npm ci + Vite production build + AWS SAM build
-- Deploy: sam deploy --config-env prod (samconfig.toml in repo root)
+- Build: npx esbuild (Lambda bundle) + Vite (frontend) + sam build
+- Deploy: ./deploy.sh — reads ANTHROPIC_API_KEY from SSM, runs sam deploy + S3 sync + CF invalidation
 - Lambda runtime: nodejs20.x | Architecture: x86_64
 - API Gateway: HTTP API (auto-created by SAM)
 
-DEPLOYMENT CADENCE: ~1 deployment per 2 days (POC active development)
-FAILURE RATE: 1 failure in 5 deployments (20%) — all recovered within 30 minutes`,
-    tags: ['deployment-history', 'sme', 'pipeline', 'sam', 'github', 'lambda', 'poc'],
+DEPLOYMENT CADENCE: ~1–2 deployments per active development day
+FAILURE RATE: 1 hard failure in 8 deployments (12.5%); 1 incident during v2.3 (API key overwrite, resolved in 20 min)`,
+    tags: ['deployment-history', 'deployed', 'changes-deployed', 'recent-changes', 'latest-deployment', 'what-changed', 'sme', 'pipeline', 'sam', 'github', 'lambda', 'poc'],
     classification: 'INTERNAL',
-    freshness_ts: '2025-03-04T10:00:00Z',
-    ingest_ts: '2025-03-04T10:00:00Z',
+    freshness_ts: '2026-03-11T07:10:00Z',
+    ingest_ts: '2026-03-11T07:10:00Z',
     ttl_hours: 24,
-    meta: { deployment_count: 5, failure_rate: '20%', stack: 'truebank-digital-sme' }
+    meta: { deployment_count: 8, failure_rate: '12.5%', stack: 'truebank-sme', current_version: 'v2.3' }
   },
 
 ];
