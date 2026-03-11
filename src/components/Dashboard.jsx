@@ -224,7 +224,7 @@ export default function Dashboard() {
           <div>
             <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>TrueBank</span>
             <span style={{ fontSize: 11, color: 'var(--accent-teal)', letterSpacing: '0.06em', fontFamily: 'JetBrains Mono, monospace', marginLeft: 8 }}>DIGITAL SME</span>
-            <span style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace', marginLeft: 6 }}>v2.1</span>
+            <span style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace', marginLeft: 6 }}>v2.2</span>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 16, fontSize: 12 }}>
@@ -290,7 +290,7 @@ export default function Dashboard() {
         {/* Footer note */}
         <div style={{ marginTop: 32, fontSize: 11, color: 'var(--text-muted)', borderTop: '1px solid var(--border-subtle)', paddingTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
           <span>
-            TrueBank Digital SME Platform v2.1 · Prototype · Knowledge scope: TruView Platform + Digital SME ·
+            TrueBank Digital SME Platform v2.2 · Prototype · Knowledge scope: TruView Platform + Digital SME ·
             Non-TruView applications require Digital SME team onboarding
           </span>
           <Link

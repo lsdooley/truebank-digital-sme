@@ -187,9 +187,19 @@ const TYPE_STYLE = {
 
 const CHANGELOG = [
   {
+    version: 'v2.2',
+    date: '2026-03-11',
+    current: true,
+    changes: [
+      { type: 'fix',   text: 'Degraded banner "View in SME" button now navigates to the first SME-enabled degraded app dynamically instead of hardcoding TruView Core.' },
+      { type: 'fix',   text: 'Added typeof guard on __BUILD_TIME__ in Sidebar footer to prevent ReferenceError if Vite define is missing.' },
+      { type: 'chore', text: 'Removed unused onOpen prop from AppCard component.' },
+    ],
+  },
+  {
     version: 'v2.1',
     date: '2026-03-07',
-    current: true,
+    current: false,
     changes: [
       { type: 'feat',  text: 'Added About This Application page with app description, RAG process flow diagram, architecture diagram, knowledge sources, and tech stack.' },
       { type: 'feat',  text: 'Added interactive process flow diagram rendered in HTML/CSS matching app theme.' },
@@ -298,7 +308,7 @@ export default function About() {
           About This Application
         </h1>
         <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 36 }}>
-          TrueBank Digital SME · v2.1 · Prototype
+          TrueBank Digital SME · v2.2 · Prototype
         </p>
 
         {/* What it is */}
